@@ -1,0 +1,94 @@
+
+get data
+```{r}
+myWeb= "https://github.com/vshaw2/finalDash/raw/main/"
+
+
+kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics.rds")))
+names(kc_demographics)
+```
+compute cluster
+```{r}
+set.seed(23994)
+#variables needed
+vars <- c('med_income', 'p_e_less','percent_poc')
+distances <- cluster::daisy(kc_demographics[,vars])
+res.pam <- cluster::pam(x=distances,
+                        k = 5,
+                        cluster.only = F)
+kc_demographics$cluster <- as.factor(res.pam$clustering)
+
+```
+
+verifying the meaning of cluster labels
+```{r}
+
+summaries <- aggregate(data=kc_demographics,
+                       cbind(med_income,p_e_less,percent_poc)~cluster,
+                       median)
+summaries[order(summaries$percent_poc),]
+```
+
+Re Coding
+```{r}
+kc_demographics$cluster <- factor(kc_demographics$cluster,
+                                  levels=c(1,5,3,4,2),
+                                  labels=c("low income diverse",
+                                           "low income middle diverse",
+                                           "middle income middle diverse", 
+                                           "high income low diversity", 
+                                           "middle income low diversity"),
+                                  ordered=T)
+
+# using st_sf() to turn kc_demographics into a sf object (map)
+kc_demographics_SF=kc_demographics%>%st_sf()
+
+```
+
+plotting
+
+```{r}
+library(magrittr)
+library(sf)
+library(ggplot2)
+LegLabel = 'ESJ Score by Census Tract' 
+
+
+ggplot()  + geom_sf(data=kc_demographics_SF, aes(fill=cluster))
+```
+
+Preparing Points
+```{r}
+roadsproj=read.csv("Geographic Data Roads Projects.csv")
+#by missing
+roadssub=roadsproj[complete.cases(roadsproj$Latitude),]
+
+# use Lon-Lat
+roadsloc = st_as_sf(roadssub, coords = c("Longitude","Latitude"), 
+                    crs = st_crs (kc_demographics_SF))
+# just points
+ggplot()  + geom_sf(data=roadsloc)
+```
+
+```{r}
+ggplot()  + 
+    # first layer
+    geom_sf(data=kc_demographics_SF, 
+                    aes(fill=cluster), 
+                    alpha=0.5) +  #alpha for transparency
+    #second layer
+    geom_sf(data=roadsloc, color='red') 
+
+```
+```{r}
+titleText = 'Roads Capital Projects Map with ESJ Score'
+LegLabel = 'ESJ Score by Census Tract' 
+
+ggplot()  + 
+    geom_sf(data=kc_demographics_SF, 
+                    aes(fill=cluster), 
+                    alpha=0.5) +  
+    geom_sf(data=roadsloc, color='red') + labs(title = titleText, caption = "King County") + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=guide_legend(title="ESJ Score by Census Tract"))
+  
+```
+

@@ -1,0 +1,111 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+library(tidyverse)
+```
+
+```{r}
+df <- read_csv("Projects - January 24, 2022.csv")
+df <- df %>% filter(!df$Phase%in%c("OPERATIONS","LAND"))
+```
+```{r}
+table(df$Phase)
+```
+
+
+```{r}
+
+
+```
+
+
+
+```{r}
+phasesDF=as.data.frame(table(df$Phase))
+names(phasesDF)=c("Phase", "Count")
+
+```
+
+
+```{r}
+
+phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
+                                          'PREDESIGN',
+                                          'DESIGN',
+                                          'IMPLEMENT',
+                                          'CLOSEOUT',
+                                          'HOLD',
+                                          'NOT SET'))
+```
+
+
+
+```{r}
+library(ggplot2)
+
+base=ggplot(data=phasesDF, aes(x=Phase,y=Count))
+base+geom_bar(stat = "identity")
+```
+
+
+```{r}
+df2 <- df %>% select(Phase, Master)
+
+tab_All <- df2 %>% select(-Master) %>% table() %>% as_tibble() %>% rename(Phase = ".", Count = n)
+tab_M_Yes <- df2 %>% filter(Master == "Yes") %>% table() %>% as_tibble() %>% rename(Count = n)
+tab_M_No <- df2 %>% filter(Master == "No") %>% table() %>% as_tibble() %>% rename(Count = n)
+
+title_Text <- 'Total number of projects by phase'
+X_axis_title <- 'Project Phases'
+max <- as.integer(max(tab_All$Count)) 
+```
+```{r}
+data <- tab_All
+data$Phase <- factor(data$Phase, levels = c('PLANNING',
+                                          'PREDESIGN',
+                                          'DESIGN',
+                                          'IMPLEMENT',
+                                          'CLOSEOUT',
+                                          'HOLD',
+                                          'NOT SET'))
+```
+```{r}
+base <- ggplot(data, aes(x = Phase,
+                   y = Count,
+                   label = Count)) +
+  theme_classic()
+```
+```{r}
+lolliplot_All = base + 
+  geom_segment(aes(y = 0, 
+                   yend = Count, 
+                   x = Phase, 
+                   xend = Phase),
+               color = "gray")  +
+  
+ geom_point(size = 4, color = "Blue") +
+  geom_text(nudge_x=0.3,show.legend = FALSE) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(limits = c(0, max)) + 
+  theme(axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.line.x = element_blank()) +
+  labs(title = title_Text) +
+  xlab(X_axis_title)
+```
+```{r}
+lolliplot_All
+```
+```{r}
+(PhasesGate1=table(data$Phase,data$PortfolioCategory))
+```
+
+

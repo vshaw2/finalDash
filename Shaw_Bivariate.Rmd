@@ -1,0 +1,146 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(tidyverse)
+toris=read.csv("RoadsProjectScheduleData.csv")
+```
+```{r}
+table(toris$Portfolio.Category)
+```
+
+```{r}
+# Drainage 
+# Roadway, Roadside, Traffic Control (will be lumped together called "Road and Traffic"
+# Bridges and Structures 
+
+categoryToSelect=c("Drainage","Roadway","Roadside","Traffic Control","Bridges & Structures")
+torisSubSet=toris[toris$Portfolio.Category%in%categoryToSelect,]
+
+#project number/name needs to be included.. 
+
+```
+
+
+```{r}
+##recode 3 categories into one
+toRecode=c("Roadway","Roadside","Traffic Control")
+ifelse(torisSubSet$Portfolio.Category%in%toRecode, # condition
+       "Road and Traffic",# if condition met
+       torisSubSet$Portfolio.Category) # else
+```
+
+
+```{r}
+torisSubSet$Portfolio.Category= ifelse(torisSubSet$Portfolio.Category%in%toRecode,
+                                       "Road and Traffic",
+                                       torisSubSet$Portfolio.Category)
+```
+
+```{r}
+varsToSelect=c("Portfolio.Category","Gate.1","Gate.2","Gate.3",
+               "Gate.1..Performance.Reference.","Gate.2..Performance.Reference.","Gate.3..Performance.Reference.","Number", "Name")
+torisSubSet=torisSubSet[,varsToSelect]
+```
+
+```{r}
+DateColumns=c("Gate.1","Gate.2","Gate.3",
+               "Gate.1..Performance.Reference.","Gate.2..Performance.Reference.","Gate.3..Performance.Reference.")
+torisSubSet[,DateColumns]=lapply(torisSubSet[,DateColumns],as.Date,format='%m/%d/%Y')
+
+# you get:
+torisSubSet
+```
+```{r}
+torisCompleteDates=torisSubSet[complete.cases(torisSubSet),]
+torisCompleteDates
+```
+
+```{r}
+torisCompleteDates[,8:10]=0
+```
+```{r}
+torisCompleteDates[,8:10]=torisCompleteDates[,2:4]-torisCompleteDates[,5:7]
+```
+
+```{r}
+names(torisCompleteDates)[8:10]=c("Diff1","Diff2","Diff3")
+```
+```{r}
+torisCompleteDates[,8:10]=lapply(torisCompleteDates[,8:10],as.numeric)
+torisCompleteDates[,8:10]
+```
+```{r}
+aggregate(data=torisCompleteDates,
+          cbind(Diff1,Diff2,Diff3)~Portfolio.Category,
+          FUN=mean)
+```
+
+```{r}
+DFtoPlot=torisCompleteDates[,c("Portfolio.Category","Diff1","Diff2","Diff3")]
+DFtoPlot
+```
+```{r}
+library(reshape2)
+DFtoPlot=melt(DFtoPlot,id.vars = 'Portfolio.Category')
+DFtoPlot
+```
+
+```{r}
+library(ggplot2)
+
+base=ggplot(data=DFtoPlot) + theme_classic()
+base + geom_boxplot(aes(x=Portfolio.Category,
+                        y=value))
+```
+```{r}
+ggplot(data=DFtoPlot[DFtoPlot$Diff3!=2033,])
+```
+
+```{r}
+tapply(DFtoPlot$value,
+       DFtoPlot$Portfolio.Category, summary)
+```
+```{r}
+base + geom_boxplot(aes(x=variable,
+                        y=value))
+```
+
+
+```{r}
+base + geom_boxplot(aes(x=Portfolio.Category,
+                        y=value)) + facet_wrap(variable~.) + coord_flip()
+```
+```{r}
+baseMEANs=ggplot(DFtoPlot, aes(x=Portfolio.Category,
+                             y=value)) +
+        theme_classic()
+pointMEANS=baseMEANs + geom_point(stat="summary") + labs(title = "Average Gate Schedule Variance for Active Projects", caption = "King County Road Services Division") + xlab("Unit") + ylab("Average Schedule Variance(days) for Gate Dates") + theme(plot.title = element_text(hjust = 0.5))
+pointMEANS
+```
+#I like this-showing average schedule variance for each unit--drainage usually has issues so highlighting that 
+```{r}
+titleText = 'Schedule Variance of Roads Capital Projects'
+sourceText = 'King County Road Services Division'
+
+baseMEANs= ggplot(DFtoPlot[DFtoPlot$value!=2033,], aes(title=titleText, x=Portfolio.Category,
+                      y=value, caption = sourceText)) +
+        theme_classic()
+jitterMEANs= baseMEANs + geom_jitter(colour="blue",
+                             alpha=0.2)
+jitterMEANs=jitterMEANs + geom_point(stat="summary") +
+             geom_errorbar(stat="summary")
+jitterMEANs + scale_y_continuous(breaks = c(100, 300, 500),labels = scales::comma) + labs(title = titleText, caption = sourceText) + xlab("Engineering Unit") + ylab("Milestone Schedule Variance (Days)") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+
+
+
+
