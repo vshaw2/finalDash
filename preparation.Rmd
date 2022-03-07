@@ -23,8 +23,9 @@ myWeb= "https://github.com/vshaw2/finalDash/raw/main/"
 kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics%20(3).rds")))
 roads=read.csv(paste0(myWeb,"Geographic%20Data%20Roads%20Projects.csv"))
 roadsproj=readRDS(file=url(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.rds")))
-df <- read_csv("Projects - January 24, 2022.csv")
-df <- df %>% filter(!df$Phase%in%c("OPERATIONS","LAND"))
+df <- read.csv(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.csv"))
+names(df)[1]='phase'
+df <- df %>% filter(!df$phase%in%c("OPERATIONS","LAND"))
 ```
 
 ```{r, univariate}
