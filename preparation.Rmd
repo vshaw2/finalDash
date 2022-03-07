@@ -1,0 +1,128 @@
+---
+title: "Final Dashboard"
+output:   
+  
+    flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(viridis)
+library(leaflet)
+library(mapview)
+library(tmap)
+library(sf)
+library(cluster)
+library(ggplot2)
+
+myWeb= "https://github.com/vshaw2/finalDash/raw/main/"
+
+
+kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics%20(3).rds")))
+roads=read.csv(paste0(myWeb,"Geographic%20Data%20Roads%20Projects.csv"))
+roadsproj=readRDS(file=url(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.rds")))
+df <- read_csv("Projects - January 24, 2022.csv")
+df <- df %>% filter(!df$Phase%in%c("OPERATIONS","LAND"))
+```
+
+```{r, univariate}
+phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
+                                          'PREDESIGN',
+                                          'DESIGN',
+                                          'IMPLEMENT',
+                                          'CLOSEOUT',
+                                          'HOLD',
+                                          'NOT SET'))
+saveRDS(phasesDF, "phases.rds")
+
+
+```
+
+```{r, bivariate}
+saveRDS(torisCompleteDates,"torisCompleteDates.rds")
+
+readRDS(file=url())
+
+DFtoPlot=torisCompleteDates[,c("Portfolio.Category","Diff1","Diff2","Diff3")]
+DFtoPlot
+
+#need to save DFtoplot as well 
+```
+
+```{r,map}
+kc_demographics$cluster <- factor(kc_demographics$cluster,
+                                  levels=c(1,5,3,4,2),
+                                  labels=c("low income diverse",
+                                           "low income middle diverse",
+                                           "middle income middle diverse", 
+                                           "high income low diversity", 
+                                           "middle income low diversity"),
+                                  ordered=T)
+kc_demographics_SF=kc_demographics%>%st_sf()
+ggplot()  + geom_sf(data=kc_demographics_SF, aes(fill=cluster))
+
+roadsproj=read.csv("Geographic Data Roads Projects.csv")
+roadssub=roadsproj[complete.cases(roadsproj$Latitude),]
+
+roadsloc = st_as_sf(roadssub, coords = c("Longitude","Latitude"), 
+                    crs = st_crs (kc_demographics_SF))
+```
+
+Column {data-width=600}
+-----------------------------------------------------------------------
+
+###Plot 1 
+```{r}
+ggplot()  + 
+    geom_sf(data=kc_demographics_SF, 
+                    aes(fill=cluster), 
+                    alpha=0.5) +  
+    geom_sf(data=roadsloc, color='red') + labs(title = titleText, caption = "King County") + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=guide_legend(title="ESJ Score by Census Tract"))
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+###Plot 2
+```{r}
+lolliplot_All = base + 
+  geom_segment(aes(y = 0, 
+                   yend = Count, 
+                   x = Phase, 
+                   xend = Phase),
+               color = "gray")  +
+  
+ geom_point(size = 4, color = "Blue") +
+  geom_text(nudge_x=0.3,show.legend = FALSE) +
+  geom_hline(yintercept = 0) +
+  scale_y_continuous(limits = c(0, max)) + 
+  theme(axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.line.y = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.line.x = element_blank()) +
+  labs(title = title_Text, caption = "King County Road Services Division") +
+  xlab(X_axis_title)
+
+lolliplot_All
+```
+
+###Plot 3 
+```{r}
+titleText = 'Schedule Variance of Roads Capital Projects'
+sourceText = 'King County Road Services Division'
+
+baseMEANs= ggplot(DFtoPlot[DFtoPlot$value!=2033,], aes(title=titleText, x=Portfolio.Category,
+                      y=value, caption = sourceText)) +
+        theme_classic()
+jitterMEANs= baseMEANs + geom_jitter(colour="blue",
+                             alpha=0.2)
+jitterMEANs=jitterMEANs + geom_point(stat="summary") +
+             geom_errorbar(stat="summary")
+jitterMEANs + scale_y_continuous(breaks = c(100, 300, 500),labels = scales::comma) + labs(title = titleText, caption = sourceText) + xlab("Engineering Unit") + ylab("Milestone Schedule Variance (Days)") + theme(plot.title = element_text(hjust = 0.5))
+```
+
