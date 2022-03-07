@@ -16,7 +16,7 @@ library(cluster)
 myWeb= "https://github.com/vshaw2/finalDash/raw/main/"
 
 
-kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics).rds")))
+kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics.rds")))
 roadsproj=read.csv(paste0(myWeb,"Geographic%20Data%20Roads%20Projects.csv"))
 toris=read.csv(paste0(myWeb,"RoadsProjectScheduleData.csv"))
 
