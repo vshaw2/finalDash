@@ -26,9 +26,8 @@ roadsproj=readRDS(file=url(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.r
 df <- read.csv(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.csv"))
 names(df)[1]='phase'
 df <- df %>% filter(!df$phase%in%c("OPERATIONS","LAND"))
-```
-
-```{r, univariate}
+phasesDF=as.data.frame(table(df$phase))
+names(phasesDF)=c("Phase", "Count")
 phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
                                           'PREDESIGN',
                                           'DESIGN',
@@ -36,10 +35,10 @@ phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
                                           'CLOSEOUT',
                                           'HOLD',
                                           'NOT SET'))
-saveRDS(phasesDF, "phases.rds")
-
-
+saveRDS(phasesDF, "phasesDF.rds")
 ```
+
+
 
 ```{r, bivariate}
 saveRDS(torisCompleteDates,"torisCompleteDates.rds")
