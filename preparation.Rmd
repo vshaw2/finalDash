@@ -8,24 +8,21 @@ output:
 ---
 ```{r setup, include=FALSE}
 library(flexdashboard)
-library(tidyverse)
-library(viridis)
-library(leaflet)
-library(mapview)
-library(tmap)
+
 library(sf)
 library(cluster)
-library(ggplot2)
+
 
 myWeb= "https://github.com/vshaw2/finalDash/raw/main/"
 
 
-kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics%20(3).rds")))
-roads=read.csv(paste0(myWeb,"Geographic%20Data%20Roads%20Projects.csv"))
-roadsproj=readRDS(file=url(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.rds")))
+kc_demographics= readRDS(file=url(paste0(myWeb, "kc_demographics).rds")))
+roadsproj=read.csv(paste0(myWeb,"Geographic%20Data%20Roads%20Projects.csv"))
+toris=read.csv(paste0(myWeb,"RoadsProjectScheduleData.csv"))
+
 df <- read.csv(paste0(myWeb,"Projects%20-%20January%2024%2C%202022.csv"))
 names(df)[1]='phase'
-df <- df %>% filter(!df$phase%in%c("OPERATIONS","LAND"))
+df <- df[!df$phase%in%c("OPERATIONS","LAND"),]
 phasesDF=as.data.frame(table(df$phase))
 names(phasesDF)=c("Phase", "Count")
 phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
@@ -36,93 +33,56 @@ phasesDF$Phase <- factor(phasesDF$Phase, levels = c('PLANNING',
                                           'HOLD',
                                           'NOT SET'))
 saveRDS(phasesDF, "phasesDF.rds")
+
+
+
 ```
 
 
 
 ```{r, bivariate}
-saveRDS(torisCompleteDates,"torisCompleteDates.rds")
+categoryToSelect=c("Drainage","Roadway","Roadside","Traffic Control","Bridges & Structures")
+torisSubSet=toris[toris$Portfolio.Category%in%categoryToSelect,]
+toRecode=c("Roadway","Roadside","Traffic Control")
+torisSubSet$Portfolio.Category= ifelse(torisSubSet$Portfolio.Category%in%toRecode,
+                                       "Road and Traffic",
+                                       torisSubSet$Portfolio.Category)
+varsToSelect=c("Portfolio.Category","Gate.1","Gate.2","Gate.3",
+               "Gate.1..Performance.Reference.","Gate.2..Performance.Reference.","Gate.3..Performance.Reference.","Number", "Name")
 
-readRDS(file=url())
+torisSubSet=torisSubSet[,varsToSelect]
+DateColumns=c("Gate.1","Gate.2","Gate.3",
+               "Gate.1..Performance.Reference.","Gate.2..Performance.Reference.","Gate.3..Performance.Reference.")
+torisSubSet[,DateColumns]=lapply(torisSubSet[,DateColumns],as.Date,format='%m/%d/%Y')
+torisCompleteDates=torisSubSet[complete.cases(torisSubSet),]
 
+```
+
+
+
+```{r}
+torisCompleteDates[,8:10]=0
+
+torisCompleteDates[,8:10]=torisCompleteDates[,2:4]-torisCompleteDates[,5:7]
+
+names(torisCompleteDates)[8:10]=c("Diff1","Diff2","Diff3")
+
+torisCompleteDates[,8:10]=lapply(torisCompleteDates[,8:10],as.numeric)
+
+```
+
+
+```{r}
 DFtoPlot=torisCompleteDates[,c("Portfolio.Category","Diff1","Diff2","Diff3")]
-DFtoPlot
 
-#need to save DFtoplot as well 
 ```
 
-```{r,map}
-kc_demographics$cluster <- factor(kc_demographics$cluster,
-                                  levels=c(1,5,3,4,2),
-                                  labels=c("low income diverse",
-                                           "low income middle diverse",
-                                           "middle income middle diverse", 
-                                           "high income low diversity", 
-                                           "middle income low diversity"),
-                                  ordered=T)
-kc_demographics_SF=kc_demographics%>%st_sf()
-ggplot()  + geom_sf(data=kc_demographics_SF, aes(fill=cluster))
 
-roadsproj=read.csv("Geographic Data Roads Projects.csv")
-roadssub=roadsproj[complete.cases(roadsproj$Latitude),]
-
-roadsloc = st_as_sf(roadssub, coords = c("Longitude","Latitude"), 
-                    crs = st_crs (kc_demographics_SF))
-```
-
-Column {data-width=600}
------------------------------------------------------------------------
-
-###Plot 1 
 ```{r}
-ggplot()  + 
-    geom_sf(data=kc_demographics_SF, 
-                    aes(fill=cluster), 
-                    alpha=0.5) +  
-    geom_sf(data=roadsloc, color='red') + labs(title = titleText, caption = "King County") + theme(plot.title = element_text(hjust = 0.5)) + guides(fill=guide_legend(title="ESJ Score by Census Tract"))
+library(reshape2)
+DFtoPlot=melt(DFtoPlot,id.vars = 'Portfolio.Category')
+saveRDS(DFtoPlot,file = "DFtoPlot.rds")
 ```
 
-Column {data-width=400}
------------------------------------------------------------------------
 
-###Plot 2
-```{r}
-lolliplot_All = base + 
-  geom_segment(aes(y = 0, 
-                   yend = Count, 
-                   x = Phase, 
-                   xend = Phase),
-               color = "gray")  +
-  
- geom_point(size = 4, color = "Blue") +
-  geom_text(nudge_x=0.3,show.legend = FALSE) +
-  geom_hline(yintercept = 0) +
-  scale_y_continuous(limits = c(0, max)) + 
-  theme(axis.ticks.y = element_blank(),
-        axis.title.y = element_blank(),
-        axis.line.y = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.title.x = element_blank(),
-        axis.line.x = element_blank()) +
-  labs(title = title_Text, caption = "King County Road Services Division") +
-  xlab(X_axis_title)
-
-lolliplot_All
-```
-
-###Plot 3 
-```{r}
-titleText = 'Schedule Variance of Roads Capital Projects'
-sourceText = 'King County Road Services Division'
-
-baseMEANs= ggplot(DFtoPlot[DFtoPlot$value!=2033,], aes(title=titleText, x=Portfolio.Category,
-                      y=value, caption = sourceText)) +
-        theme_classic()
-jitterMEANs= baseMEANs + geom_jitter(colour="blue",
-                             alpha=0.2)
-jitterMEANs=jitterMEANs + geom_point(stat="summary") +
-             geom_errorbar(stat="summary")
-jitterMEANs + scale_y_continuous(breaks = c(100, 300, 500),labels = scales::comma) + labs(title = titleText, caption = sourceText) + xlab("Engineering Unit") + ylab("Milestone Schedule Variance (Days)") + theme(plot.title = element_text(hjust = 0.5))
-```
 
